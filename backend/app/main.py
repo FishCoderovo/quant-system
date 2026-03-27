@@ -170,6 +170,16 @@ async def toggle_strategy(strategy_name: str, enabled: bool):
 
 # ============ 回测 API ============
 
+@app.get("/api/backtest/results")
+async def get_backtest_results():
+    """获取已保存的回测结果"""
+    import json, os
+    path = os.path.join(os.path.dirname(__file__), '..', 'data', 'backtest_results.json')
+    if os.path.exists(path):
+        with open(path) as f:
+            return json.load(f)
+    return {"results": []}
+
 @app.post("/api/backtest/run")
 async def run_backtest(
     symbol: str = "BTC/USDT",
