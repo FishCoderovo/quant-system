@@ -262,4 +262,4 @@ async def get_market_analysis(symbol: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)  # 使用端口8001避免冲突

@@ -6,7 +6,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [engineStatus, setEngineStatus] = useState(false);
 
-  const API_URL = 'http://localhost:8000';
+  const API_URL = 'http://localhost:8001';
 
   useEffect(() => {
     fetchDashboard();
