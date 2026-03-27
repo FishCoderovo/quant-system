@@ -1,11 +1,12 @@
 """
-策略引擎 v3.0 - 终极版
+策略引擎 v3.1 - 多时间框架版
 集成:
-- 7种基础策略
+- 8种基础策略
 - 量价背离检测
 - Wyckoff周期分析
 - 资金费率策略
 - 海龟交易法则
+- 多时间框架共振 (NEW)
 - 多维度信号聚合
 """
 import pandas as pd
@@ -22,6 +23,7 @@ from app.strategies.turtle import TurtleStrategy
 from app.divergence_detector import divergence_detector, DivergenceSignal
 from app.wyckoff_analyzer import wyckoff_analyzer, WyckoffPhase
 from app.funding_strategy import funding_strategy, FundingRateSignal
+from app.multi_timeframe import mtf_analyzer, TrendDirection
 from app.indicators import calculate_all_indicators
 from app.config import settings
 
@@ -73,9 +75,11 @@ class StrategyEngine:
         self.divergence_detector = divergence_detector
         self.wyckoff_analyzer = wyckoff_analyzer
         self.funding_strategy = funding_strategy
+        self.mtf_analyzer = mtf_analyzer
         
         # 分析结果缓存
         self.last_analysis = {}
+        self.last_resonance = {}
     
     def analyze_market(self, symbol: str, df: pd.DataFrame) -> Dict:
         """
@@ -230,6 +234,31 @@ class StrategyEngine:
         self.active_strategies = strategy_names
         self.market_state = market_state
         
+        # 3.5 多时间框架共振分析 (NEW)
+        # 只有当基础策略有信号时才检查共振
+        if signals:
+            try:
+                resonance = self.mtf_analyzer.analyze(symbol)
+                if resonance:
+                    self.last_resonance[symbol] = resonance
+                    
+                    # 共振检查：如果共振不足，大幅降低信号分数或取消交易
+                    if not resonance.tradeable:
+                        print(f"[{symbol}] 共振不足({resonance.score:.0f}分，需{self.mtf_analyzer.MIN_RESONANCE_SCORE})，信号降级")
+                        # 大幅降低信号权重
+                        for i, (signal, weight) in enumerate(signals):
+                            signals[i] = (signal, weight * 0.3)  # 信号权重降至30%
+                    else:
+                        print(f"[{symbol}] 共振确认({resonance.score:.0f}分，{resonance.description})")
+                        # 共振确认，信号增强
+                        for i, (signal, weight) in enumerate(signals):
+                            if signal.action == 'buy' and resonance.direction.value in ['up', 'strong_up']:
+                                signals[i] = (signal, weight * 1.3)
+                            elif signal.action == 'sell' and resonance.direction.value in ['down', 'strong_down']:
+                                signals[i] = (signal, weight * 1.3)
+            except Exception as e:
+                print(f"[{symbol}] 多时间框架分析失败: {e}")
+        
         # 4. 信号聚合
         aggregated = self.aggregate_signals(signals)
         
@@ -287,7 +316,18 @@ class StrategyEngine:
             'analyzers': {
                 'divergence': 'enabled',
                 'wyckoff': 'enabled',
-                'funding': 'enabled'
+                'funding': 'enabled',
+                'multi_timeframe': 'enabled'
+            },
+            'resonance': {
+                symbol: {
+                    'score': r.score,
+                    'direction': r.direction.value,
+                    'aligned': f"{r.aligned_count}/{r.total_count}",
+                    'tradeable': r.tradeable,
+                    'description': r.description
+                }
+                for symbol, r in self.last_resonance.items()
             }
         }
     

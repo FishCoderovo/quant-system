@@ -61,3 +61,8 @@ build/
 
 # Backup
 backups/
+*.pid
+__pycache__/
+*.pyc
+.env
+venv/
