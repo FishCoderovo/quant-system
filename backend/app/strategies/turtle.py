@@ -11,7 +11,7 @@
 """
 import pandas as pd
 import numpy as np
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 from dataclasses import dataclass
 from app.strategies.base import Strategy, Signal
 from app.config import settings

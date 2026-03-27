@@ -65,6 +65,7 @@ class StrategyEngine:
         
         # 状态
         self.active_strategies: List[str] = []
+        self.active_strategy: Optional[str] = None  # 兼容旧API
         self.market_state: str = "unknown"
         self.mode = 'parallel'
         
@@ -241,6 +242,9 @@ class StrategyEngine:
             # 添加分析信息
             if analysis['signals']:
                 aggregated.reason = f"{aggregated.reason} | {'; '.join(analysis['signals'][:2])}"
+            
+            # 更新活跃策略字符串（兼容旧API）
+            self.active_strategy = aggregated.strategy
         
         return aggregated
     
