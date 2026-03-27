@@ -168,6 +168,98 @@ async def toggle_strategy(strategy_name: str, enabled: bool):
     strategy_engine.toggle_strategy(strategy_name, enabled)
     return {"status": "success", "strategy": strategy_name, "enabled": enabled}
 
+# ============ 回测 API ============
+
+@app.post("/api/backtest/run")
+async def run_backtest(
+    symbol: str = "BTC/USDT",
+    days: int = 30,
+    strategy: str = "all"
+):
+    """
+    运行回测
+    
+    参数:
+    - symbol: 交易对
+    - days: 回测天数
+    - strategy: 策略名或 'all'
+    """
+    from app.backtest_engine import backtest_engine
+    from app.exchange import okx
+    import pandas as pd
+    
+    try:
+        # 获取历史数据
+        timeframe = '1h' if days <= 30 else '4h'
+        limit = min(days * 24, 1000) if timeframe == '1h' else min(days * 6, 500)
+        
+        df = okx.fetch_ohlcv(symbol, timeframe, limit=limit)
+        
+        if df.empty or len(df) < 50:
+            return {"error": "历史数据不足"}
+        
+        # 运行回测
+        from app.strategy_engine import strategy_engine as se
+        result = backtest_engine.run_backtest(
+            df, 
+            lambda s, d: se.evaluate_symbol(s, d),
+            symbol
+        )
+        
+        return {
+            "symbol": symbol,
+            "period_days": days,
+            "total_return": f"{result.total_return*100:.2f}%",
+            "annualized_return": f"{result.annualized_return*100:.2f}%",
+            "sharpe_ratio": f"{result.sharpe_ratio:.2f}",
+            "max_drawdown": f"{result.max_drawdown*100:.2f}%",
+            "win_rate": f"{result.win_rate*100:.2f}%",
+            "profit_factor": f"{result.profit_factor:.2f}",
+            "total_trades": result.total_trades,
+            "winning_trades": result.winning_trades,
+            "losing_trades": result.losing_trades,
+            "equity_curve": result.equity_curve[-100:]  # 最近100个点
+        }
+    
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/analysis/{symbol}")
+async def get_market_analysis(symbol: str):
+    """
+    获取市场综合分析
+    
+    返回:
+    - 量价背离分析
+    - Wyckoff周期
+    - 综合评分
+    """
+    from app.exchange import okx
+    from app.strategy_engine import strategy_engine
+    
+    try:
+        # 获取数据
+        df = okx.fetch_ohlcv(symbol, '1h', limit=100)
+        
+        if df.empty:
+            return {"error": "无法获取数据"}
+        
+        # 运行分析
+        analysis = strategy_engine.analyze_market(symbol, df)
+        
+        return {
+            "symbol": symbol,
+            "timestamp": analysis.get('timestamp', pd.Timestamp.now()).isoformat() if hasattr(analysis.get('timestamp'), 'isoformat') else str(analysis.get('timestamp')),
+            "market_state": analysis.get('market_state', 'unknown'),
+            "composite_score": analysis.get('composite_score', 0),
+            "signals": analysis.get('signals', []),
+            "divergence": analysis.get('divergence'),
+            "wyckoff": analysis.get('wyckoff')
+        }
+    
+    except Exception as e:
+        return {"error": str(e)}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
