@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-28T12:53:38.305033",
+  "timestamp": "2026-03-28T16:57:30.213228",
   "version": "v3.0",
   "config": {
     "initial_balance": 58.0,
@@ -25,32 +25,32 @@
   },
   "results": {
     "BTC/USDT": {
-      "total_return": "8.58%",
-      "final_balance": "62.98 USDT",
-      "win_rate": "52.27%",
-      "profit_factor": "1.18",
-      "max_drawdown": "8.85%",
-      "sharpe_ratio": "0.39",
-      "total_trades": 44,
-      "long_trades": 21,
-      "short_trades": 23,
-      "long_pnl": "-1.9764 USDT",
-      "short_pnl": "+6.9552 USDT",
-      "total_fees": "1.5087 USDT"
+      "total_return": "18.71%",
+      "final_balance": "68.85 USDT",
+      "win_rate": "58.54%",
+      "profit_factor": "1.26",
+      "max_drawdown": "6.25%",
+      "sharpe_ratio": "0.85",
+      "total_trades": 41,
+      "long_trades": 22,
+      "short_trades": 19,
+      "long_pnl": "+2.2787 USDT",
+      "short_pnl": "+8.5747 USDT",
+      "total_fees": "1.5932 USDT"
     },
     "ETH/USDT": {
-      "total_return": "25.23%",
-      "final_balance": "72.64 USDT",
-      "win_rate": "55.56%",
-      "profit_factor": "1.59",
-      "max_drawdown": "6.85%",
-      "sharpe_ratio": "0.86",
-      "total_trades": 45,
-      "long_trades": 20,
-      "short_trades": 25,
-      "long_pnl": "+2.6020 USDT",
-      "short_pnl": "+12.0336 USDT",
-      "total_fees": "1.1117 USDT"
+      "total_return": "30.70%",
+      "final_balance": "75.80 USDT",
+      "win_rate": "61.54%",
+      "profit_factor": "1.93",
+      "max_drawdown": "5.75%",
+      "sharpe_ratio": "1.12",
+      "total_trades": 39,
+      "long_trades": 18,
+      "short_trades": 21,
+      "long_pnl": "+8.2395 USDT",
+      "short_pnl": "+9.5646 USDT",
+      "total_fees": "1.0594 USDT"
     }
   }
 }

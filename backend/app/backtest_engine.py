@@ -88,8 +88,8 @@ class BacktestEngine:
     # 止损倍数
     SL_ATR_MULT = 2.5
 
-    # 盈亏比
-    TREND_RR = 2.5
+    # 盈亏比 (从2.5降到2.0，更容易触发止盈)
+    TREND_RR = 2.0
     RANGE_RR = 1.5
     TREND_STRATEGIES = {'TrendFollowing', 'Turtle'}
 

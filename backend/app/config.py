@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # 风控参数
     MAX_POSITION_PCT: float = 0.70  # 单次最大 70%
     MAX_SINGLE_RISK_PCT: float = 0.15  # 单笔风险 ≤ 15%
-    MIN_RISK_REWARD_RATIO: float = 2.5  # 最小盈亏比 2.5:1 (修复：从0.8提高到2.5)
+    MIN_RISK_REWARD_RATIO: float = 2.0  # 最小盈亏比 2.0:1 (从2.5降低，更容易触发止盈)
     VOLUME_CONFIRMATION_THRESHOLD: float = 0.80  # 成交量确认 (>80%)
     MULTI_TF_MIN_SCORE: int = 40  # 最小共振评分
     TRADE_COOLDOWN_MIN: int = 15  # 交易冷却 15分钟

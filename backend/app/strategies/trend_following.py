@@ -77,7 +77,7 @@ class TrendFollowingStrategy(Strategy):
         elif price_5 < -1:
             long_score -= 10
         
-        if long_score >= 65:
+        if long_score >= 70:
             self.last_signal_idx = current_idx
             return Signal(
                 action='buy', symbol=symbol, strategy=self.name,
@@ -128,7 +128,7 @@ class TrendFollowingStrategy(Strategy):
         elif price_5 > 1:
             short_score -= 10
         
-        if short_score >= 65:
+        if short_score >= 70:
             self.last_signal_idx = current_idx
             return Signal(
                 action='short', symbol=symbol, strategy=self.name,
