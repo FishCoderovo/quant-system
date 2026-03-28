@@ -4,7 +4,7 @@ import {
   BarChart, Bar, Cell, PieChart, Pie
 } from 'recharts';
 
-const API = 'http://localhost:8002';
+const API = 'http://localhost:8001';
 
 // ─── Helpers ───
 const fmt = (n, d = 2) => n != null ? Number(n).toFixed(d) : '—';
