@@ -191,15 +191,15 @@ class StrategyEngine:
             return "range_bound"
     
     def select_strategies(self, market_state: str) -> List[str]:
-        """选择策略 — 终极精简版，只在上涨趋势做多"""
+        """选择策略 — v3: 双向交易，上涨做多/下跌做空"""
         strategy_map = {
             'strong_uptrend': ['trend_following', 'turtle'],
             'uptrend': ['trend_following', 'turtle'],
-            'range_bound': [],          # 震荡市不交易 (没有网格/均值回归了)
+            'range_bound': [],              # 震荡不交易
             'high_volatility': ['turtle'],
-            'downtrend': [],
-            'strong_downtrend': [],
-            'low_volatility': [],       # 低波不交易
+            'downtrend': ['trend_following', 'turtle'],      # 做空！
+            'strong_downtrend': ['trend_following', 'turtle'], # 做空！
+            'low_volatility': [],
         }
         return strategy_map.get(market_state, [])
     

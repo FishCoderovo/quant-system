@@ -1,16 +1,16 @@
 {
-  "timestamp": "2026-03-28T12:30:59.519911",
-  "version": "v2.3",
+  "timestamp": "2026-03-28T12:53:38.305033",
+  "version": "v3.0",
   "config": {
     "initial_balance": 58.0,
     "timeframe": "4h",
-    "period": "~90 days",
-    "fee": "maker 0.08%",
-    "stop_loss": "ATR×2.5 + trailing",
+    "period": "~180 days",
+    "spot_fee": "maker 0.08%",
+    "contract_fee": "maker 0.02%",
+    "stop_loss": "ATR×2.5 + trailing (both directions)",
     "take_profit": "R:R 2.5:1",
     "position_sizing": "2% risk, max 70%",
-    "market_detection": "MA alignment + price vs MA20 + MA20 slope",
-    "buy_threshold": 60,
+    "market_detection": "MA alignment + price vs MA20",
     "strategies": [
       "TrendFollowing",
       "Turtle"
@@ -19,32 +19,38 @@
       "BTC/USDT",
       "ETH/USDT"
     ],
-    "downtrend_action": "no trade (100% cash)"
+    "long_mode": "spot",
+    "short_mode": "contract 1x (no leverage)",
+    "consecutive_loss_protection": "3 losses → 8 day cooldown"
   },
   "results": {
     "BTC/USDT": {
-      "total_return": "3.94%",
-      "final_balance": "60.29 USDT",
-      "win_rate": "45.00%",
-      "profit_factor": "1.60",
-      "max_drawdown": "5.86%",
-      "sharpe_ratio": "0.28",
-      "total_trades": 20,
-      "total_fees": "1.1193 USDT",
-      "winning": 9,
-      "losing": 11
+      "total_return": "8.58%",
+      "final_balance": "62.98 USDT",
+      "win_rate": "52.27%",
+      "profit_factor": "1.18",
+      "max_drawdown": "8.85%",
+      "sharpe_ratio": "0.39",
+      "total_trades": 44,
+      "long_trades": 21,
+      "short_trades": 23,
+      "long_pnl": "-1.9764 USDT",
+      "short_pnl": "+6.9552 USDT",
+      "total_fees": "1.5087 USDT"
     },
     "ETH/USDT": {
-      "total_return": "2.96%",
-      "final_balance": "59.72 USDT",
-      "win_rate": "40.00%",
-      "profit_factor": "1.84",
-      "max_drawdown": "5.36%",
-      "sharpe_ratio": "0.19",
-      "total_trades": 20,
-      "total_fees": "0.8490 USDT",
-      "winning": 8,
-      "losing": 12
+      "total_return": "25.23%",
+      "final_balance": "72.64 USDT",
+      "win_rate": "55.56%",
+      "profit_factor": "1.59",
+      "max_drawdown": "6.85%",
+      "sharpe_ratio": "0.86",
+      "total_trades": 45,
+      "long_trades": 20,
+      "short_trades": 25,
+      "long_pnl": "+2.6020 USDT",
+      "short_pnl": "+12.0336 USDT",
+      "total_fees": "1.1117 USDT"
     }
   }
 }
