@@ -321,15 +321,26 @@ class StrategyEngine:
     
     def get_strategy_status(self) -> Dict:
         """获取策略状态"""
+        # 转换numpy类型为Python原生类型
+        def to_native(val):
+            import numpy as np
+            if isinstance(val, np.bool_):
+                return bool(val)
+            if isinstance(val, (np.integer, np.int64)):
+                return int(val)
+            if isinstance(val, (np.floating, np.float64)):
+                return float(val)
+            return val
+        
         return {
             'market_state': self.market_state,
             'mode': self.mode,
-            'active_strategies': self.active_strategies,
+            'active_strategies': [to_native(s) for s in self.active_strategies],
             'strategies': {
                 name: {
-                    'enabled': strategy.is_enabled(),
+                    'enabled': to_native(strategy.is_enabled()),
                     'name': strategy.name,
-                    'weight': self.strategy_weights.get(name, 1.0)
+                    'weight': to_native(self.strategy_weights.get(name, 1.0))
                 }
                 for name, strategy in self.strategies.items()
             },
@@ -341,11 +352,11 @@ class StrategyEngine:
             },
             'resonance': {
                 symbol: {
-                    'score': r.score,
-                    'direction': r.direction.value,
-                    'aligned': f"{r.aligned_count}/{r.total_count}",
-                    'tradeable': r.tradeable,
-                    'description': r.description
+                    'score': to_native(r.score),
+                    'direction': str(r.direction.value) if hasattr(r.direction, 'value') else str(r.direction),
+                    'aligned': f"{to_native(r.aligned_count)}/{to_native(r.total_count)}",
+                    'tradeable': to_native(r.tradeable),
+                    'description': str(r.description)
                 }
                 for symbol, r in self.last_resonance.items()
             }
