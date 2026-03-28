@@ -88,6 +88,10 @@ class BacktestEngine:
     RANGE_RR = 1.5       # 震荡策略
     TREND_STRATEGIES = {'TrendFollowing', 'Turtle'}
 
+    # 连续亏损保护
+    MAX_CONSECUTIVE_LOSSES = 3   # 连亏N笔后暂停
+    LOSS_COOLDOWN_BARS = 48      # 暂停K线数 (4h × 48 = 8天)
+
     def __init__(self, initial_balance: float = 58.0, fee_type: str = 'maker'):
         self.initial_balance = initial_balance
         self.balance = initial_balance
@@ -96,6 +100,9 @@ class BacktestEngine:
         self.equity_curve: List[float] = [initial_balance]
         self.total_fees: float = 0
         self.fee_rate = self.MAKER_FEE if fee_type == 'maker' else self.TAKER_FEE
+        # 连续亏损追踪
+        self.consecutive_losses = 0
+        self.cooldown_until_bar = -1
 
     def reset(self):
         """重置回测状态"""
@@ -104,6 +111,8 @@ class BacktestEngine:
         self.trades = []
         self.equity_curve = [self.initial_balance]
         self.total_fees = 0
+        self.consecutive_losses = 0
+        self.cooldown_until_bar = -1
 
     def run_backtest(self,
                      data: pd.DataFrame,
@@ -124,21 +133,36 @@ class BacktestEngine:
             atr = row.get('atr', current_price * 0.02)
             current_time = data.index[i] if hasattr(data.index[0], 'isoformat') else i
 
+            trades_before = len(self.trades)
+
             # ===== 1. 先检查持仓止损/止盈 (用high/low模拟盘中触发) =====
             self._check_positions(symbol, high_price, low_price, current_price, atr, current_time)
 
             # ===== 2. 获取策略信号 =====
             signal = strategy_func(symbol, current_data)
 
-            # ===== 3. 执行信号 =====
+            # ===== 3. 执行信号 (含连续亏损冷却检查) =====
             if signal:
                 if signal.action == 'buy' and symbol not in self.positions:
-                    self._execute_buy(signal, current_price, atr, current_time)
+                    if i >= self.cooldown_until_bar:
+                        self._execute_buy(signal, current_price, atr, current_time)
+                    # else: 冷却期内，跳过买入
                 elif signal.action == 'sell' and symbol in self.positions:
                     self._execute_sell(symbol, current_price, current_time,
                                        signal.strategy, signal.reason)
 
-            # ===== 4. 更新权益曲线 =====
+            # ===== 4. 更新连续亏损计数器 =====
+            if len(self.trades) > trades_before:
+                for t in self.trades[trades_before:]:
+                    if t.action == 'sell':
+                        if t.pnl < 0:
+                            self.consecutive_losses += 1
+                            if self.consecutive_losses >= self.MAX_CONSECUTIVE_LOSSES:
+                                self.cooldown_until_bar = i + self.LOSS_COOLDOWN_BARS
+                        elif t.pnl > 0:
+                            self.consecutive_losses = 0
+
+            # ===== 5. 更新权益曲线 =====
             total_value = self.balance + self._position_value(symbol, current_price)
             self.equity_curve.append(total_value)
 

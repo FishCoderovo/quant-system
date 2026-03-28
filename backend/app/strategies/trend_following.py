@@ -30,7 +30,7 @@ class TrendFollowingStrategy(Strategy):
         latest = df.iloc[-1]
         prev = df.iloc[-2]
         
-        # ========== 趋势评分系统 ==========
+        # ========== 趋势评分系统 v2 ==========
         score = 0
         reasons = []
         
@@ -61,7 +61,6 @@ class TrendFollowingStrategy(Strategy):
         macd_signal = latest.get('macd_signal', 0)
         if macd > macd_signal:
             score += 20
-            # MACD刚金叉（前一根还是死叉）额外加分
             if prev.get('macd', 0) <= prev.get('macd_signal', 0):
                 score += 10
                 reasons.append("MACD金叉")

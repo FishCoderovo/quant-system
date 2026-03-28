@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-28T12:11:04.883281",
+  "timestamp": "2026-03-28T12:30:59.519911",
   "version": "v2.3",
   "config": {
     "initial_balance": 58.0,
@@ -23,28 +23,28 @@
   },
   "results": {
     "BTC/USDT": {
-      "total_return": "-2.58%",
-      "final_balance": "56.51 USDT",
-      "win_rate": "23.08%",
-      "profit_factor": "2.39",
-      "max_drawdown": "7.14%",
-      "sharpe_ratio": "-0.31",
-      "total_trades": 13,
-      "total_fees": "0.6906 USDT",
-      "winning": 3,
-      "losing": 10
+      "total_return": "3.94%",
+      "final_balance": "60.29 USDT",
+      "win_rate": "45.00%",
+      "profit_factor": "1.60",
+      "max_drawdown": "5.86%",
+      "sharpe_ratio": "0.28",
+      "total_trades": 20,
+      "total_fees": "1.1193 USDT",
+      "winning": 9,
+      "losing": 11
     },
     "ETH/USDT": {
-      "total_return": "1.23%",
-      "final_balance": "58.71 USDT",
-      "win_rate": "38.46%",
-      "profit_factor": "1.88",
-      "max_drawdown": "5.94%",
-      "sharpe_ratio": "0.15",
-      "total_trades": 13,
-      "total_fees": "0.5275 USDT",
-      "winning": 5,
-      "losing": 8
+      "total_return": "2.96%",
+      "final_balance": "59.72 USDT",
+      "win_rate": "40.00%",
+      "profit_factor": "1.84",
+      "max_drawdown": "5.36%",
+      "sharpe_ratio": "0.19",
+      "total_trades": 20,
+      "total_fees": "0.8490 USDT",
+      "winning": 8,
+      "losing": 12
     }
   }
 }

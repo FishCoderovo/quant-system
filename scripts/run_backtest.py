@@ -220,7 +220,7 @@ def main():
     print("║   Quant System 回测 v2.3 (终极精简版)            ║")
     print("║   策略: TrendFollowing + Turtle                  ║")
     print("║   币种: BTC + ETH (砍掉SOL)                     ║")
-    print("║   数据: 4h K线 ~90天 (分批拉取)                 ║")
+    print("║   数据: 4h K线 ~180天 (覆盖完整牛熊周期)        ║")
     print("║   入场: 只在上涨趋势做多，其余空仓              ║")
     print("║   止损: ATR×2.5 + 移动止损                      ║")
     print("║   盈亏比: 2.5:1                                 ║")
@@ -232,9 +232,9 @@ def main():
     all_results = {}
 
     for sym in symbols:
-        print(f"\n⏳ 拉取 {sym} 4h K线 (~90天)...")
+        print(f"\n⏳ 拉取 {sym} 4h K线 (~180天, 覆盖完整牛熊)...")
         try:
-            df = fetch_ohlcv(sym, '4h', days=90)
+            df = fetch_ohlcv(sym, '4h', days=180)
             days = (df.index[-1] - df.index[0]).days if len(df) > 1 else 0
             print(f"   ✅ 共 {len(df)} 根K线 ({days}天)")
         except Exception as e:
