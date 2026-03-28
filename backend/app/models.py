@@ -48,6 +48,8 @@ class Position(Base):
     is_open = Column(Boolean, default=True)
     strategy = Column(String(50))  # 开仓策略
     atr = Column(Float)  # 开仓时的ATR值
+    stop_loss_order_id = Column(String(64))   # OKX止损条件单ID (服务端止损)
+    take_profit_order_id = Column(String(64)) # OKX止盈条件单ID (预留)
 
 class Trade(Base):
     """交易记录表"""
