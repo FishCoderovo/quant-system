@@ -187,6 +187,13 @@ export default function App() {
     } catch {}
   };
 
+  const toggleStrategyFn = async (name, enabled) => {
+    try {
+      await fetch(`${API}/api/strategies/${name}/toggle?enabled=${enabled}`, { method: 'POST' });
+      fetchAll();
+    } catch {}
+  };
+
   // Derive chart data from trades or positions
   const equityCurve = React.useMemo(() => {
     if (!trades?.length) return [];
@@ -494,16 +501,20 @@ export default function App() {
                         <div style={{ fontSize: 13, fontWeight: 500 }}>{info.display_name || name}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{name}</div>
                       </div>
-                      <span className={cls('badge', info.enabled !== false ? 'badge-green' : 'badge-red')}>
+                      <button onClick={() => toggleStrategyFn(name, !info.enabled)} style={{
+                        padding: '4px 12px', borderRadius: 6, fontSize: 12, border: 'none', cursor: 'pointer',
+                        background: info.enabled !== false ? 'var(--green)' : 'var(--text-muted)',
+                        color: 'white'
+                      }}>
                         {info.enabled !== false ? '启用' : '禁用'}
-                      </span>
+                      </button>
                     </div>
                   )) : <Empty text="无策略数据" />}
                 </div>
 
                 {/* Analyzers */}
                 <div className="card" style={{ padding: 20 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>分析器</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>分析器 <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>（始终启用）</span></div>
                   {strategies?.analyzers ? Object.entries(strategies.analyzers).map(([name, status]) => (
                     <div key={name} style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
