@@ -82,16 +82,16 @@ class RiskManager:
     
     def calculate_stop_loss(self, entry_price: float, atr: float) -> float:
         """
-        计算 ATR 动态止损价
+        计算 ATR 动态止损价 (ATR × 2.5，从2.0放宽)
         """
-        return entry_price - (2 * atr)
+        return entry_price - (2.5 * atr)
     
     def calculate_take_profit(self, entry_price: float, stop_loss_price: float) -> float:
         """
-        计算目标价 (盈亏比 2:1)
+        计算目标价 (盈亏比由配置决定，当前 2.5:1)
         """
         risk = entry_price - stop_loss_price
-        return entry_price + (risk * 2)
+        return entry_price + (risk * settings.MIN_RISK_REWARD_RATIO)
     
     def check_risk_reward_ratio(self, 
                                  entry_price: float,

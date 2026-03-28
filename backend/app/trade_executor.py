@@ -61,9 +61,11 @@ class TradeExecutor:
         if position_amount <= 0:
             return {'success': False, 'error': '计算仓位为0'}
         
-        # 6. 执行买入
+        # 6. 执行买入 (使用限价单，享受maker费率 0.08% vs 0.15%)
         try:
-            order = okx.create_market_buy_order(symbol, position_amount)
+            # 限价单价格：比当前价高0.1%，确保成交同时享受maker费率
+            limit_price = entry_price * 1.001
+            order = okx.create_limit_buy_order(symbol, position_amount, limit_price)
             
             # 实际成交价格
             filled_price = order.get('average', entry_price)
@@ -126,8 +128,10 @@ class TradeExecutor:
         执行卖出
         """
         try:
-            # 1. 执行卖出
-            order = okx.create_market_sell_order(position.symbol, position.amount)
+            # 1. 执行卖出 (使用限价单，享受maker费率)
+            # 限价单价格：比当前价低0.1%，确保成交同时享受maker费率
+            limit_price = current_price * 0.999
+            order = okx.create_limit_sell_order(position.symbol, position.amount, limit_price)
             
             # 实际成交价格
             filled_price = order.get('average', current_price)

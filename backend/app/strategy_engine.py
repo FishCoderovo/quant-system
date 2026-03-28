@@ -14,11 +14,7 @@ from typing import Dict, List, Optional, Tuple
 from app.strategies.base import Strategy, Signal
 from app.strategies.trend_following import TrendFollowingStrategy
 from app.strategies.mean_reversion import MeanReversionStrategy
-from app.strategies.breakout import BreakoutStrategy
-from app.strategies.oversold_bounce import OversoldBounceStrategy
 from app.strategies.grid_trading import GridTradingStrategy
-from app.strategies.martingale import MartingaleStrategy
-from app.strategies.momentum_breakout import MomentumBreakoutStrategy
 from app.strategies.turtle import TurtleStrategy
 from app.divergence_detector import divergence_detector, DivergenceSignal
 from app.wyckoff_analyzer import wyckoff_analyzer, WyckoffPhase
@@ -29,40 +25,26 @@ from app.config import settings
 
 class StrategyEngine:
     """
-    策略引擎 v3.0 - 终极版
+    策略引擎 v3.2 - 精简版
     
-    特性:
-    1. 10种交易策略
-    2. 量价背离检测
-    3. Wyckoff周期识别
-    4. 资金费率套利
-    5. 多维度信号聚合
-    6. 智能权重分配
+    改进:
+    1. 砍掉无效策略，只保留4个核心策略
+    2. 提高盈亏比到2.5:1
+    3. 降低交易频率，提高信号质量
+    4. 保留多时间框架共振过滤
     """
     
     def __init__(self):
-        # 基础策略
+        # 终极精简：只保留2个趋势策略
+        # 砍掉 MeanReversion (信号多质量低) 和 GridTrading (单边市亏钱)
         self.strategies: Dict[str, Strategy] = {
             'trend_following': TrendFollowingStrategy(),
-            'mean_reversion': MeanReversionStrategy(),
-            'breakout': BreakoutStrategy(),
-            'oversold_bounce': OversoldBounceStrategy(),
-            'grid_trading': GridTradingStrategy(),
-            'martingale': MartingaleStrategy(),
-            'momentum_breakout': MomentumBreakoutStrategy(),
             'turtle': TurtleStrategy()
         }
         
-        # 策略权重
         self.strategy_weights = {
-            'trend_following': 1.0,
-            'mean_reversion': 1.0,
-            'breakout': 1.0,
-            'oversold_bounce': 0.8,
-            'grid_trading': 1.2,
-            'martingale': 0.6,
-            'momentum_breakout': 1.1,
-            'turtle': 1.0
+            'trend_following': 1.2,
+            'turtle': 1.3
         }
         
         # 状态
@@ -144,33 +126,62 @@ class StrategyEngine:
         return analysis
     
     def detect_market_state(self, df: pd.DataFrame) -> str:
-        """检测市场状态"""
+        """
+        检测市场状态 — v3: 超强趋势过滤
+        
+        逻辑 (按优先级):
+        1. MA排列: 空头→下跌, 多头→上涨
+        2. 价格+MA20关系: 价格<MA20 且 MA20下降 → 下跌
+        3. 涨跌幅+波动率: 兜底判断
+        """
         if len(df) < 30:
             return "unknown"
         
         latest = df.iloc[-1]
         current_price = df['close'].iloc[-1]
         
-        # 多周期涨幅
-        price_5m_ago = df['close'].iloc[-5] if len(df) >= 5 else df['close'].iloc[0]
-        price_20m_ago = df['close'].iloc[-20] if len(df) >= 20 else df['close'].iloc[0]
+        ma5 = latest.get('ma5', 0)
+        ma10 = latest.get('ma10', 0)
+        ma20 = latest.get('ma20', 0)
         
-        change_5m = (current_price - price_5m_ago) / price_5m_ago * 100
-        change_20m = (current_price - price_20m_ago) / price_20m_ago * 100
+        price_5 = df['close'].iloc[-5] if len(df) >= 5 else df['close'].iloc[0]
+        price_20 = df['close'].iloc[-20] if len(df) >= 20 else df['close'].iloc[0]
+        chg5 = (current_price - price_5) / price_5 * 100
+        chg20 = (current_price - price_20) / price_20 * 100
         
         bb_width = latest.get('bb_width', 0.1)
         atr = latest.get('atr', current_price * 0.01)
         atr_pct = atr / current_price
         volume_ratio = latest.get('volume_ratio', 1.0)
         
-        # 判定逻辑
-        if change_5m > 2 or change_20m > 5:
+        # ===== 1. MA排列 (最高优先级) =====
+        if ma5 > 0 and ma10 > 0 and ma20 > 0:
+            if ma5 < ma10 < ma20:
+                return "strong_downtrend" if chg20 < -5 else "downtrend"
+            if ma5 > ma10 > ma20:
+                return "strong_uptrend" if chg20 > 5 else "uptrend"
+        
+        # ===== 2. 价格<MA20 + MA20下降 → 下跌 =====
+        if ma20 > 0 and current_price < ma20:
+            # 检查MA20是否在下降
+            if len(df) >= 25:
+                ma20_prev = df['close'].iloc[-25:-5].mean()  # 5根K线前的MA20近似值
+                if ma20 < ma20_prev:
+                    return "downtrend"
+        
+        # ===== 3. 价格>MA20 + MA20上升 → 才可能是上涨 =====
+        if ma20 > 0 and current_price > ma20:
+            if len(df) >= 25:
+                ma20_prev = df['close'].iloc[-25:-5].mean()
+                if ma20 > ma20_prev and chg5 > 0.5:
+                    return "uptrend"
+        
+        # ===== 4. 涨跌幅兜底 =====
+        if chg5 > 2 or chg20 > 5:
             return "strong_uptrend"
-        elif change_5m > 0.5 or change_20m > 2:
-            return "uptrend"
-        elif change_5m < -2 or change_20m < -5:
+        elif chg5 < -2 or chg20 < -5:
             return "strong_downtrend"
-        elif change_5m < -0.5 or change_20m < -2:
+        elif chg5 < -0.5 or chg20 < -2:
             return "downtrend"
         elif atr_pct > 0.02 and volume_ratio > 1.5:
             return "high_volatility"
@@ -180,15 +191,15 @@ class StrategyEngine:
             return "range_bound"
     
     def select_strategies(self, market_state: str) -> List[str]:
-        """选择策略组合"""
+        """选择策略 — 终极精简版，只在上涨趋势做多"""
         strategy_map = {
-            'strong_uptrend': ['trend_following', 'momentum_breakout', 'turtle'],
-            'uptrend': ['trend_following', 'momentum_breakout'],
-            'range_bound': ['mean_reversion', 'grid_trading'],
-            'high_volatility': ['breakout', 'momentum_breakout', 'martingale'],
-            'downtrend': ['oversold_bounce', 'grid_trading'],
+            'strong_uptrend': ['trend_following', 'turtle'],
+            'uptrend': ['trend_following', 'turtle'],
+            'range_bound': [],          # 震荡市不交易 (没有网格/均值回归了)
+            'high_volatility': ['turtle'],
+            'downtrend': [],
             'strong_downtrend': [],
-            'low_volatility': ['grid_trading', 'mean_reversion'],
+            'low_volatility': [],       # 低波不交易
         }
         return strategy_map.get(market_state, [])
     

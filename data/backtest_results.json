@@ -1,0 +1,50 @@
+{
+  "timestamp": "2026-03-28T12:11:04.883281",
+  "version": "v2.3",
+  "config": {
+    "initial_balance": 58.0,
+    "timeframe": "4h",
+    "period": "~90 days",
+    "fee": "maker 0.08%",
+    "stop_loss": "ATR×2.5 + trailing",
+    "take_profit": "R:R 2.5:1",
+    "position_sizing": "2% risk, max 70%",
+    "market_detection": "MA alignment + price vs MA20 + MA20 slope",
+    "buy_threshold": 60,
+    "strategies": [
+      "TrendFollowing",
+      "Turtle"
+    ],
+    "symbols": [
+      "BTC/USDT",
+      "ETH/USDT"
+    ],
+    "downtrend_action": "no trade (100% cash)"
+  },
+  "results": {
+    "BTC/USDT": {
+      "total_return": "-2.58%",
+      "final_balance": "56.51 USDT",
+      "win_rate": "23.08%",
+      "profit_factor": "2.39",
+      "max_drawdown": "7.14%",
+      "sharpe_ratio": "-0.31",
+      "total_trades": 13,
+      "total_fees": "0.6906 USDT",
+      "winning": 3,
+      "losing": 10
+    },
+    "ETH/USDT": {
+      "total_return": "1.23%",
+      "final_balance": "58.71 USDT",
+      "win_rate": "38.46%",
+      "profit_factor": "1.88",
+      "max_drawdown": "5.94%",
+      "sharpe_ratio": "0.15",
+      "total_trades": 13,
+      "total_fees": "0.5275 USDT",
+      "winning": 5,
+      "losing": 8
+    }
+  }
+}

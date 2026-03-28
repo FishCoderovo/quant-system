@@ -1,6 +1,10 @@
 """
-趋势跟随策略 (TrendFollowing)
-适用: 上涨/强劲上涨趋势
+趋势跟随策略 v2.0 - 改进版
+适用: 上涨趋势
+改进:
+1. 更完善的卖出逻辑（MA死叉 + MACD死叉 + RSI超买）
+2. 趋势强度评分，而不是简单的条件叠加
+3. 信号冷却期
 """
 import pandas as pd
 from typing import Optional
@@ -8,54 +12,130 @@ from app.strategies.base import Strategy, Signal
 from app.config import settings
 
 class TrendFollowingStrategy(Strategy):
-    """趋势跟随策略"""
+    """趋势跟随策略 - 改进版"""
     
     def __init__(self):
         super().__init__("TrendFollowing")
+        self.min_signal_interval = 8   # 从4提高到8，减少交易频率
+        self.last_signal_idx = -999
     
     def evaluate(self, symbol: str, df: pd.DataFrame) -> Optional[Signal]:
-        """评估趋势跟随策略"""
-        if not self.enabled:
+        if not self.enabled or len(df) < 30:
             return None
         
-        if len(df) < 30:
+        current_idx = len(df) - 1
+        if current_idx - self.last_signal_idx < self.min_signal_interval:
             return None
         
-        # 获取最新数据
         latest = df.iloc[-1]
+        prev = df.iloc[-2]
         
-        # 条件1: MA 多头排列 (MA5 > MA10 > MA20)
-        ma_aligned = latest.get('ma5', 0) > latest.get('ma10', 0) > latest.get('ma20', 0)
+        # ========== 趋势评分系统 ==========
+        score = 0
+        reasons = []
         
-        # 条件2: RSI 在 40-70 之间
-        rsi_valid = 40 < latest.get('rsi', 0) < 70
+        # 1. MA排列 (+30分)
+        ma5 = latest.get('ma5', 0)
+        ma10 = latest.get('ma10', 0)
+        ma20 = latest.get('ma20', 0)
         
-        # 条件3: 成交量确认 (>80%)
-        volume_confirmed = latest.get('volume_ratio', 0) > settings.VOLUME_CONFIRMATION_THRESHOLD
+        if ma5 > ma10 > ma20:
+            score += 30
+            reasons.append("MA多头排列")
+        elif ma5 < ma10 < ma20:
+            score -= 30
+            reasons.append("MA空头排列")
         
-        # 条件4: MACD 金叉或多头排列
-        macd_bullish = latest.get('macd', 0) > latest.get('macd_signal', 0)
+        # 2. RSI (+20分)
+        rsi = latest.get('rsi', 50)
+        if 45 < rsi < 65:
+            score += 20  # 健康区间
+            reasons.append(f"RSI{rsi:.0f}")
+        elif rsi > 75:
+            score -= 15  # 超买
+        elif rsi < 35:
+            score -= 15  # 超卖
         
-        # 买入条件: 满足所有条件
-        if ma_aligned and rsi_valid and volume_confirmed and macd_bullish:
+        # 3. MACD (+20分)
+        macd = latest.get('macd', 0)
+        macd_signal = latest.get('macd_signal', 0)
+        if macd > macd_signal:
+            score += 20
+            # MACD刚金叉（前一根还是死叉）额外加分
+            if prev.get('macd', 0) <= prev.get('macd_signal', 0):
+                score += 10
+                reasons.append("MACD金叉")
+            else:
+                reasons.append("MACD多头")
+        else:
+            score -= 10
+        
+        # 4. 成交量确认 (+15分)
+        vol_ratio = latest.get('volume_ratio', 1.0)
+        if vol_ratio > 1.5:
+            score += 15
+            reasons.append(f"放量{vol_ratio:.1f}x")
+        elif vol_ratio > 1.0:
+            score += 5
+        
+        # 5. 价格动量 (+15分)
+        if len(df) >= 10:
+            price_5 = (latest['close'] - df['close'].iloc[-5]) / df['close'].iloc[-5] * 100
+            if price_5 > 1:
+                score += 15
+            elif price_5 < -1:
+                score -= 10
+        
+        # ========== 买入决策 ==========
+        if score >= 65:
+            self.last_signal_idx = current_idx
             return Signal(
                 action='buy',
                 symbol=symbol,
                 strategy=self.name,
-                reason=f"MA多头+RSI{latest.get('rsi', 0):.1f}+成交量{latest.get('volume_ratio', 0):.2f}x+MACD金叉",
-                score=75,
-                confidence=0.75
+                reason=f"趋势买入({score}分): {'+'.join(reasons[:3])}",
+                score=min(90, score),
+                confidence=min(0.9, score / 100)
             )
         
-        # 卖出条件: RSI > 75 或 MACD死叉
-        if latest.get('rsi', 0) > 75:
+        # ========== 卖出决策（改进：多条件）==========
+        sell_score = 0
+        sell_reasons = []
+        
+        # MA死叉
+        if ma5 < ma10:
+            sell_score += 30
+            sell_reasons.append("MA5<MA10")
+        
+        # MACD死叉
+        if macd < macd_signal and prev.get('macd', 0) >= prev.get('macd_signal', 0):
+            sell_score += 35
+            sell_reasons.append("MACD死叉")
+        
+        # RSI超买回落
+        if rsi > 70 and rsi < prev.get('rsi', 0):
+            sell_score += 25
+            sell_reasons.append(f"RSI{rsi:.0f}回落")
+        
+        # 极端超买
+        if rsi > 80:
+            sell_score += 30
+            sell_reasons.append(f"RSI{rsi:.0f}极端超买")
+        
+        # 放量下跌
+        if vol_ratio > 1.5 and latest['close'] < prev['close']:
+            sell_score += 20
+            sell_reasons.append("放量下跌")
+        
+        if sell_score >= 45:
+            self.last_signal_idx = current_idx
             return Signal(
                 action='sell',
                 symbol=symbol,
                 strategy=self.name,
-                reason=f"RSI超买({latest.get('rsi', 0):.1f})",
-                score=60,
-                confidence=0.6
+                reason=f"趋势卖出({sell_score}分): {'+'.join(sell_reasons[:3])}",
+                score=min(85, sell_score),
+                confidence=min(0.85, sell_score / 100)
             )
         
         return None
