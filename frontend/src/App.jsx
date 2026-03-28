@@ -4,7 +4,7 @@ import {
   BarChart, Bar, Cell, PieChart, Pie
 } from 'recharts';
 
-const API = 'http://localhost:8001';
+const API = 'http://localhost:8002';
 
 // ─── Helpers ───
 const fmt = (n, d = 2) => n != null ? Number(n).toFixed(d) : '—';
@@ -283,10 +283,14 @@ export default function App() {
               <div className="fade-in">
                 {/* Stat Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 24 }}>
-                  <StatCard icon="wallet" label="总资产 (USDT)" value={`$${fmt(data?.total_balance)}`} delay="fade-in" />
-                  <StatCard icon="chart" label="可用资金" value={`$${fmt(data?.available_balance)}`} delay="fade-in-delay" />
+                  <StatCard icon="wallet" 
+                    label="总资产" 
+                    value={`$${fmt(data?.total_balance_usd)}`} 
+                    sub={`≈ ¥${fmt(data?.total_balance_cny || 0)}`}
+                    delay="fade-in" />
+                  <StatCard icon="chart" label="可用资金 (USDT)" value={`$${fmt(data?.available_balance)}`} delay="fade-in-delay" />
                   <StatCard icon="activity" label="今日盈亏"
-                    value={fmtPct(data?.daily_pnl_pct || (data?.daily_pnl ? data.daily_pnl / (data.total_balance || 1) * 100 : 0))}
+                    value={fmtPct(data?.daily_pnl_pct || (data?.daily_pnl ? data.daily_pnl / (data.total_balance_usd || 1) * 100 : 0))}
                     sub={`$${fmt(data?.daily_pnl || 0)}`}
                     trend={data?.daily_pnl || 0}
                     delay="fade-in-delay" />
@@ -321,7 +325,36 @@ export default function App() {
                 )}
 
                 {/* Positions quick view + Strategy */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+                  {/* 资产明细 */}
+                  <div className="card fade-in-delay" style={{ padding: 20 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Icon d={icons.wallet} size={14} color="var(--accent)" />
+                      资产明细
+                    </div>
+                    {data?.asset_breakdown?.length ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {data.asset_breakdown.map((asset, i) => (
+                          <div key={i} style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: '8px 12px', borderRadius: 6, background: 'rgba(255,255,255,0.02)'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, minWidth: 40 }}>{asset.currency}</span>
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                {fmt(asset.amount, 4)}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
+                              ${fmt(asset.value_usd)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : <Empty text="暂无资产明细" />}
+                  </div>
+
+                  {/* 持仓 */}
                   <div className="card fade-in-delay" style={{ padding: 20 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Icon d={icons.target} size={14} color="var(--accent)" />

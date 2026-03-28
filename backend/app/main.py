@@ -83,14 +83,46 @@ async def get_engine_status():
 @app.get("/api/dashboard")
 async def get_dashboard(db: Session = Depends(get_db)):
     """获取 Dashboard 数据"""
-    # 获取账户余额
+    # 获取账户余额并计算总资产
+    total_balance_usd = 0
+    usdt_free = 0
+    asset_breakdown = []
+    
     try:
         balance = okx.fetch_balance()
-        usdt_balance = balance.get('USDT', {}).get('total', 0)
         usdt_free = balance.get('USDT', {}).get('free', 0)
-    except:
-        usdt_balance = 0
-        usdt_free = 0
+        
+        # 计算所有币种总价值（折算成USDT）
+        CRYPTO_SYMBOLS = ['BTC', 'ETH', 'SOL', 'DOGE', 'XRP', 'LTC', 'BCH', 'ETC']
+        for currency in CRYPTO_SYMBOLS + ['USDT']:
+            currency_data = balance.get(currency, {})
+            total = currency_data.get('total', 0)
+            if total > 0:
+                if currency == 'USDT':
+                    value_usd = total
+                else:
+                    # 获取该币种对USDT的价格
+                    try:
+                        ticker = okx.exchange.fetch_ticker(f'{currency}/USDT')
+                        price = ticker.get('last', 0)
+                        value_usd = total * price
+                    except:
+                        value_usd = 0
+                
+                if value_usd > 0.01:  # 只显示有价值的资产
+                    asset_breakdown.append({
+                        'currency': currency,
+                        'amount': total,
+                        'value_usd': value_usd
+                    })
+                    total_balance_usd += value_usd
+    except Exception as e:
+        print(f"获取余额失败: {e}")
+        total_balance_usd = 0
+    
+    # 使用固定汇率 USD -> CNY (实际应用中可以用API获取实时汇率)
+    USD_TO_CNY = 7.25
+    total_balance_cny = total_balance_usd * USD_TO_CNY
     
     # 获取持仓
     positions = db.query(Position).filter(Position.is_open == True).all()
@@ -111,8 +143,10 @@ async def get_dashboard(db: Session = Depends(get_db)):
     daily_stats = db.query(DailyStats).filter(DailyStats.date == today).first()
     
     return {
-        'total_balance': usdt_balance,
+        'total_balance_usd': total_balance_usd,
+        'total_balance_cny': total_balance_cny,
         'available_balance': usdt_free,
+        'asset_breakdown': asset_breakdown,
         'positions_count': len(positions),
         'positions': position_list,
         'market_state': strategy_engine.market_state,
