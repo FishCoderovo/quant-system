@@ -114,17 +114,23 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(new Date());
   const [tab, setTab] = useState('overview');
+  const [symbolConfig, setSymbolConfig] = useState({ enabled: [], available: [] });
+  const [longOnly, setLongOnly] = useState(true);
 
   const fetchAll = useCallback(async () => {
     try {
-      const [dashRes, stratRes, engRes] = await Promise.allSettled([
+      const [dashRes, stratRes, engRes, symRes, modeRes] = await Promise.allSettled([
         fetch(`${API}/api/dashboard`).then(r => r.json()),
         fetch(`${API}/api/strategies`).then(r => r.json()),
         fetch(`${API}/api/engine/status`).then(r => r.json()),
+        fetch(`${API}/api/config/symbols`).then(r => r.json()),
+        fetch(`${API}/api/config/mode`).then(r => r.json()),
       ]);
       if (dashRes.status === 'fulfilled') setData(dashRes.value);
       if (stratRes.status === 'fulfilled') setStrategies(stratRes.value);
       if (engRes.status === 'fulfilled') setEngineOn(engRes.value.is_running);
+      if (symRes.status === 'fulfilled') setSymbolConfig(symRes.value);
+      if (modeRes.status === 'fulfilled') setLongOnly(modeRes.value.long_only);
 
       // Trades
       try {
@@ -157,6 +163,27 @@ export default function App() {
     try {
       await fetch(`${API}/api/engine/${engineOn ? 'stop' : 'start'}`, { method: 'POST' });
       setEngineOn(!engineOn);
+    } catch {}
+  };
+
+  const toggleSymbol = async (symbol) => {
+    const current = symbolConfig.enabled || [];
+    const newList = current.includes(symbol)
+      ? current.filter(s => s !== symbol)
+      : [...current, symbol];
+    if (newList.length === 0) return; // 至少保留一个
+    try {
+      const res = await fetch(`${API}/api/config/symbols?symbols=${encodeURIComponent(newList.join(','))}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.enabled) setSymbolConfig(prev => ({ ...prev, enabled: data.enabled }));
+    } catch {}
+  };
+
+  const toggleLongOnly = async () => {
+    try {
+      const res = await fetch(`${API}/api/config/mode?long_only=${!longOnly}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.long_only !== undefined) setLongOnly(data.long_only);
     } catch {}
   };
 
@@ -225,6 +252,7 @@ export default function App() {
           { id: 'trades', label: '交易', icon: 'activity' },
           { id: 'strategy', label: '策略', icon: 'layers' },
           { id: 'backtest', label: '回测', icon: 'box' },
+          { id: 'settings', label: '设置', icon: 'layers' },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             padding: '12px 20px', fontSize: 13, fontWeight: 500, cursor: 'pointer',
@@ -554,6 +582,60 @@ export default function App() {
                       </ResponsiveContainer>
                     </>
                   ) : <Empty text="暂无回测数据 — 运行 scripts/run_backtest.py 生成" />}
+                </div>
+              </div>
+            )}
+            {/* ─── Settings Tab ─── */}
+            {tab === 'settings' && (
+              <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="card" style={{ padding: 20 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>币种选择</div>
+                  {symbolConfig.available.map(sym => (
+                    <div key={sym} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '10px 0', borderBottom: '1px solid var(--border)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{
+                          width: 32, height: 32, borderRadius: 6,
+                          background: sym.includes('BTC') ? '#F7931A' : sym.includes('ETH') ? '#627EEA' : sym.includes('SOL') ? '#14F195' : '#C2A633',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 12, fontWeight: 700, color: 'white'
+                        }}>{sym.split('/')[0]}</div>
+                        <span style={{ fontSize: 13 }}>{sym}</span>
+                      </div>
+                      <button onClick={() => toggleSymbol(sym)} style={{
+                        padding: '4px 12px', borderRadius: 6, fontSize: 12,
+                        background: symbolConfig.enabled.includes(sym) ? 'var(--green)' : 'var(--text-muted)',
+                        border: 'none', color: 'white', cursor: 'pointer'
+                      }}>{symbolConfig.enabled.includes(sym) ? '启用' : '禁用'}</button>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)' }}>
+                    至少保留一个币种
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: 20 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>运行模式</div>
+                  <div style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>只做多 (LONG_ONLY)</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                          开启：仅做多单<br/>关闭：双向交易（需要合约）
+                        </div>
+                      </div>
+                      <button onClick={toggleLongOnly} style={{
+                        padding: '4px 12px', borderRadius: 6, fontSize: 12,
+                        background: longOnly ? 'var(--green)' : 'var(--red)',
+                        border: 'none', color: 'white', cursor: 'pointer'
+                      }}>{longOnly ? '开启' : '关闭'}</button>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 12, fontSize: 11, color: longOnly ? 'var(--green)' : 'var(--red)' }}>
+                    当前状态: {longOnly ? '只做多（保守）' : '双向交易（合约）'}
+                  </div>
                 </div>
               </div>
             )}
