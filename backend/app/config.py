@@ -20,8 +20,17 @@ class Settings(BaseSettings):
     OKX_SANDBOX: bool = False
     
     # 交易配置
-    SYMBOLS: list = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "DOGE/USDT"]
+    AVAILABLE_SYMBOLS: list = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "DOGE/USDT"]  # 支持的全部币种
+    ENABLED_SYMBOLS: str = "BTC/USDT,ETH/USDT"  # 当前启用的币种（逗号分隔，可在.env覆盖）
     TIMEFRAMES: list = ["1m", "1h", "4h", "1d"]
+    
+    # 运行模式
+    LONG_ONLY: bool = True  # 只做多，禁止做空（保守模式）
+    
+    @property
+    def SYMBOLS(self) -> list:
+        """解析启用的币种列表"""
+        return [s.strip() for s in self.ENABLED_SYMBOLS.split(",") if s.strip()]
     
     # 风控参数
     MAX_POSITION_PCT: float = 0.70  # 单次最大 70%

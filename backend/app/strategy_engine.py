@@ -218,15 +218,19 @@ class StrategyEngine:
         if funding_rate is not None:
             funding_signal = self.funding_strategy.evaluate(symbol, funding_rate, df)
             if funding_signal and funding_signal.strength > 0.7:
-                # 资金费率信号很强，直接采用
-                return Signal(
-                    action='buy' if funding_signal.direction == 'long' else 'sell',
-                    symbol=symbol,
-                    strategy=f"FundingRate-{funding_signal.type}",
-                    reason=funding_signal.description,
-                    score=int(funding_signal.strength * 80),
-                    confidence=funding_signal.strength
-                )
+                # LONG_ONLY: 跳过做空方向的资金费率信号
+                if settings.LONG_ONLY and funding_signal.direction != 'long':
+                    print(f"[{symbol}] LONG_ONLY: 跳过做空资金费率信号")
+                else:
+                    # 资金费率信号很强，直接采用
+                    return Signal(
+                        action='buy' if funding_signal.direction == 'long' else 'sell',
+                        symbol=symbol,
+                        strategy=f"FundingRate-{funding_signal.type}",
+                        reason=funding_signal.description,
+                        score=int(funding_signal.strength * 80),
+                        confidence=funding_signal.strength
+                    )
         
         # 3. 基础策略评估
         signals = []
@@ -285,6 +289,11 @@ class StrategyEngine:
             
             # 更新活跃策略字符串（兼容旧API）
             self.active_strategy = aggregated.strategy
+        
+        # LONG_ONLY: 过滤做空信号
+        if settings.LONG_ONLY and aggregated and aggregated.action in ('short', 'cover'):
+            print(f"[{aggregated.symbol}] LONG_ONLY: 过滤做空信号 {aggregated.action}")
+            return None
         
         return aggregated
     

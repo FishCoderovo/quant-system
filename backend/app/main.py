@@ -270,6 +270,92 @@ async def get_market_analysis(symbol: str):
     except Exception as e:
         return {"error": str(e)}
 
+# ============ 配置 API ============
+
+@app.get("/api/config/symbols")
+async def get_enabled_symbols():
+    """获取当前启用的币种列表"""
+    return {
+        "enabled": settings.SYMBOLS,
+        "available": settings.AVAILABLE_SYMBOLS,
+        "enabled_str": settings.ENABLED_SYMBOLS
+    }
+
+@app.post("/api/config/symbols")
+async def set_enabled_symbols(symbols: str):
+    """
+    设置启用的币种列表
+    
+    参数: symbols (逗号分隔, 如 "BTC/USDT,ETH/USDT")
+    
+    可选值: BTC/USDT, ETH/USDT, SOL/USDT, DOGE/USDT
+    """
+    symbol_list = [s.strip() for s in symbols.split(",") if s.strip()]
+    
+    # 验证所有币种都在可用列表中
+    invalid = [s for s in symbol_list if s not in settings.AVAILABLE_SYMBOLS]
+    if invalid:
+        return {"error": f"无效币种: {invalid}", "available": settings.AVAILABLE_SYMBOLS}
+    
+    # 更新配置 (运行时有效，重启后从.env读取)
+    settings.ENABLED_SYMBOLS = ",".join(symbol_list)
+    
+    return {
+        "status": "success",
+        "enabled": settings.SYMBOLS,
+        "message": f"已启用: {', '.join(symbol_list)}"
+    }
+
+@app.get("/api/config/mode")
+async def get_trading_mode():
+    """获取当前运行模式"""
+    return {
+        "long_only": settings.LONG_ONLY,
+        "symbols": settings.SYMBOLS,
+        "note": "LONG_ONLY=true时禁止做空"
+    }
+
+@app.post("/api/config/mode")
+async def set_trading_mode(long_only: bool):
+    """
+    设置运行模式
+    
+    参数: long_only (true=只做多, false=双向交易)
+    """
+    settings.LONG_ONLY = long_only
+    
+    return {
+        "status": "success",
+        "long_only": settings.LONG_ONLY,
+        "message": "已切换到" + ("只做多模式" if long_only else "双向交易模式")
+    }
+
+# ============ 清仓 API ============
+
+@app.post("/api/positions/close-all")
+async def close_all_positions_api(reason: str = "手动清仓"):
+    """
+    强制清仓所有持仓
+    
+    参数: reason (可选, 清仓原因)
+    """
+    from app.database import SessionLocal
+    from app.trade_executor import TradeExecutor
+    
+    db = SessionLocal()
+    try:
+        executor = TradeExecutor(db)
+        results = executor.close_all_positions(reason)
+        
+        return {
+            "status": "success",
+            "reason": reason,
+            "closed_count": len(results),
+            "results": results
+        }
+    finally:
+        db.close()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8002)
