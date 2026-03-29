@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     
     # 运行模式
     LONG_ONLY: bool = True  # 只做多，禁止做空（保守模式）
+    LEVERAGE: int = 3  # 合约杠杆倍数（做空时使用）
+    TRADE_MODE: str = "spot"  # spot=现货做多, cross=全仓合约, isolated=逐仓合约
     
     @property
     def SYMBOLS(self) -> list:

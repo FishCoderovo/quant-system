@@ -345,23 +345,52 @@ async def get_trading_mode():
     """获取当前运行模式"""
     return {
         "long_only": settings.LONG_ONLY,
+        "leverage": settings.LEVERAGE,
+        "trade_mode": settings.TRADE_MODE,
         "symbols": settings.SYMBOLS,
-        "note": "LONG_ONLY=true时禁止做空"
+        "note": "LONG_ONLY=true时禁止做空; TRADE_MODE: spot=现货, cross=全仓合约"
     }
 
 @app.post("/api/config/mode")
-async def set_trading_mode(long_only: bool):
+async def set_trading_mode(
+    long_only: bool = None,
+    leverage: int = None,
+    trade_mode: str = None
+):
     """
     设置运行模式
     
-    参数: long_only (true=只做多, false=双向交易)
+    参数:
+    - long_only: true=只做多, false=双向交易
+    - leverage: 合约杠杆倍数 (1-10)
+    - trade_mode: spot/cross/isolated
     """
-    settings.LONG_ONLY = long_only
+    messages = []
+    
+    if long_only is not None:
+        settings.LONG_ONLY = long_only
+        messages.append("只做多" if long_only else "双向交易")
+    
+    if leverage is not None:
+        if 1 <= leverage <= 10:
+            settings.LEVERAGE = leverage
+            messages.append(f"杠杆 {leverage}x")
+        else:
+            return {"status": "error", "message": "杠杆范围 1-10"}
+    
+    if trade_mode is not None:
+        if trade_mode in ('spot', 'cross', 'isolated'):
+            settings.TRADE_MODE = trade_mode
+            messages.append(f"模式 {trade_mode}")
+        else:
+            return {"status": "error", "message": "模式: spot/cross/isolated"}
     
     return {
         "status": "success",
         "long_only": settings.LONG_ONLY,
-        "message": "已切换到" + ("只做多模式" if long_only else "双向交易模式")
+        "leverage": settings.LEVERAGE,
+        "trade_mode": settings.TRADE_MODE,
+        "message": "已更新: " + ", ".join(messages) if messages else "无变更"
     }
 
 # ============ 清仓 API ============
